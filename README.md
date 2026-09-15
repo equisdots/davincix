@@ -48,7 +48,7 @@ davincix.sh fetch --name <n> --map <f> --dest <f> \
              [--thumb-in <f>] [--thumb-out <f>] [--monitors ...] [--transition ...]
 davincix.sh current [--thumb-name]
 davincix.sh thumbs
-davincix.sh search <query> [--source ddg|wallhaven]
+davincix.sh search <query> [--source ddg|wallhaven|pexels|pixabay]
 davincix.sh search --continue <query>   # next page (keeps the cache)
 davincix.sh search --clear              # stop + drop the cache
 davincix.sh stop
@@ -106,6 +106,19 @@ Search providers live in `providers/` (one script per source) and are plain
   change it at any time).
 - `wallhaven.py` — Wallhaven public API (no key needed for SFW), native
   resolution filter and page-number pagination.
+- `pexels.py` — Pexels videos API (stock clips; responds without a key today,
+  sends `PEXELS_KEY` when present). thumb = preview image, full = best mp4
+  >= 1920x1080.
+- `pixabay.py` — Pixabay videos API (needs `PIXABAY_KEY`; free). thumb = Vimeo
+  preview, full = best variant >= 1920x1080.
+
+API keys live in `$DAVINCIX_STATE_DIR/keys.conf` (sourced by `search.sh`) or the
+environment: `PEXELS_KEY`, `PIXABAY_KEY`.
+
+Video results keep an image thumbnail in the cache and the map stores the video
+URL; `fetch` saves the local file with its real container extension
+(`.mp4`/`.webm`), applies it with mpvpaper and the thumbnail prep builds the
+`000_` poster.
 
 Results are filtered to >= 1920x1080 and validated (`content-type` + mime)
 before being kept.

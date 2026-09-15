@@ -119,21 +119,45 @@ cmd_fetch() {
         exit 1
     fi
 
+    # Vídeo: el map guarda el preview (.jpg como nombre), pero el archivo
+    # local debe llevar la extensión real del contenedor para que
+    # davincix_is_video/mpvpaper lo detecten.
+    local video=0 vext
+    if davincix_is_video "$url"; then
+        video=1
+        vext="${url%%\?*}"
+        vext="${vext##*.}"
+        vext="$(printf '%s' "$vext" | tr '[:upper:]' '[:lower:]')"
+        case "$vext" in
+            mp4|webm|mov|mkv) ;;
+            *) vext="mp4" ;;
+        esac
+        dest="${dest%.*}.$vext"
+    fi
+
     mkdir -p "$(dirname "$dest")"
     if ! davincix_download "$url" "$dest"; then
         notify-send "Wallpaper Error" "Download failed" -u critical -t 5000
         exit 1
     fi
 
-    # Final thumbnail: copy of the temporary one plus a resize.
-    if [ -n "$thumb_out" ]; then
+    if [ "$video" = "1" ]; then
+        # El póster 000_ lo genera la preparación de miniaturas (async).
+        source "$DIR/thumbs.sh"
+        davincix_thumbs_prep
+    elif [ -n "$thumb_out" ]; then
+        # Final thumbnail: copy of the temporary one plus a resize.
         mkdir -p "$(dirname "$thumb_out")"
         if [ -n "$thumb_in" ] && [ -f "$thumb_in" ]; then cp "$thumb_in" "$thumb_out"; fi
         magick "$dest" -resize x420 -quality 70 "$thumb_out" 2>/dev/null || true
     fi
 
     davincix_cache_current "$dest"
-    davincix_set_image "$dest" "$monitors" "$transition"
+    if [ "$video" = "1" ]; then
+        davincix_set_video "$dest" "$monitors"
+    else
+        davincix_set_image "$dest" "$monitors" "$transition"
+    fi
 }
 
 # ── current ───────────────────────────────────────────────────────────────────

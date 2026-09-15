@@ -35,6 +35,14 @@ if [ ! -f "$PROVIDER" ]; then
     exit 2
 fi
 
+# API keys para proveedores que las necesitan (Pexels, Pixabay...).
+KEYS_FILE="$DAVINCIX_STATE_DIR/keys.conf"
+if [ -f "$KEYS_FILE" ]; then
+    set -a
+    . "$KEYS_FILE"
+    set +a
+fi
+
 SEARCH_DIR="$DAVINCIX_SEARCH_DIR"
 MAP_FILE="$DAVINCIX_MAP_FILE"
 CONTROL_FILE="$DAVINCIX_CONTROL_FILE"
@@ -68,13 +76,16 @@ python3 -u "$PROVIDER" "$QUERY" \
     target_headers=$(curl -s -I -L -m 3 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" "$full_url")
     target_type=$(echo "$target_headers" | grep -i "content-type:" | tail -n 1 | tr -d '\r')
 
-    if [[ ! "$target_type" =~ "image/" ]]; then
+    # Se aceptan imágenes y vídeos: para vídeo, el archivo guardado es el
+    # preview (miniatura) y el contenedor se resuelve al aplicar (fetch).
+    if [[ ! "$target_type" =~ (image|video)/ ]]; then
         echo "Skip: Full URL is dead or HTML ($target_type) -> $full_url" >> "$LOG_FILE"
         continue
     fi
 
     uuid=$(date +%s%N)
-    ext="${full_url##*.}"
+    # El archivo almacenado es siempre una imagen: la extensión sale del thumb.
+    ext="${thumb_url##*.}"
     ext="${ext%%\?*}"
     ext=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
     if [[ ! "$ext" =~ ^(jpg|jpeg|png|webp|gif)$ ]]; then ext="jpg"; fi
