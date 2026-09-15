@@ -11,7 +11,7 @@ Version: **0.1.0** · License: MIT
 
 | Role | Tool |
 |---|---|
-| Apply still images | `awww` (awww-daemon) |
+| Apply still images | `xwww` (xwww-daemon) |
 | Apply videos | `mpvpaper` |
 | Thumbnails / webp / color helpers | ImageMagick (`magick`) |
 | Video posters | `ffmpeg` + `ffprobe` |
@@ -48,7 +48,7 @@ davincix.sh fetch --name <n> --map <f> --dest <f> \
              [--thumb-in <f>] [--thumb-out <f>] [--monitors ...] [--transition ...]
 davincix.sh current [--thumb-name]
 davincix.sh thumbs
-davincix.sh search <query>
+davincix.sh search <query> [--source ddg|wallhaven]
 davincix.sh search --continue <query>   # next page (keeps the cache)
 davincix.sh search --clear              # stop + drop the cache
 davincix.sh stop
@@ -74,7 +74,8 @@ davincix.sh --version
 
 - `current_wallpaper.png` — current wallpaper cache (lock screens, theme tools).
 - `ddg_search_control` — `run|pause|stop`; written by the UI.
-- `ddg_next_url` — DuckDuckGo pagination cursor (`search --continue`).
+- `search_cursors/<source>` — per-provider pagination cursor (`search --continue`).
+- `search_source` — active search provider (persisted per fresh search).
 - `thumbs/.manifest` + `thumbs/.source_dir` — thumbnail cache index.
 - `search_map.txt` — `name|url` for search results.
 - `slideshow.pid` + `slideshow_enabled` — slideshow daemon state.
@@ -98,10 +99,16 @@ bash davincix.sh thumbs
 
 ## Search notes
 
-The DuckDuckGo scraper (`ddg_links.py`, stdlib only) uses the public JSON
-endpoint and the VQD token dance; DDG can change it at any time. Results are
-filtered to >= 1920x1080 and validated (`content-type` + mime) before being
-kept.
+Search providers live in `providers/` (one script per source) and are plain
+"thumb|full" emitters consumed by `search.sh`:
+
+- `ddg.py` — DuckDuckGo (stdlib only; JSON endpoint + VQD token dance; DDG can
+  change it at any time).
+- `wallhaven.py` — Wallhaven public API (no key needed for SFW), native
+  resolution filter and page-number pagination.
+
+Results are filtered to >= 1920x1080 and validated (`content-type` + mime)
+before being kept.
 
 ## License
 

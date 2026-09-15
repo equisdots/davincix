@@ -28,8 +28,8 @@ usage: davincix.sh <command> [options]
                    --dest, --thumb-in, --thumb-out, --monitors, --transition)
   current          print the current wallpaper path (--thumb-name for its thumb)
   thumbs           prepare the thumbnail cache (async)
-  search <query>   run a DuckDuckGo search
-  search --continue <query>  load the next page of results (keeps the cache)
+  search <query>   run a DuckDuckGo search (--source ddg|wallhaven)
+  search --continue <query>  next page (keeps the cache; --source optional)
   search --clear   stop the search and drop its cache
   stop             stop the running search
   rm <file>        move a wallpaper to the trash (and its thumbnail)
@@ -154,40 +154,51 @@ cmd_thumbs() {
 # ── stop: stop the running search ─────────────────────────────────────────────
 cmd_stop() {
     echo 'stop' > "$DAVINCIX_CONTROL_FILE"
+    pkill -f "$DIR/providers/" 2>/dev/null || true
     pkill -f "$DIR/search.sh" 2>/dev/null || true
-    pkill -f "$DIR/ddg_links.py" 2>/dev/null || true
 }
 
-# ── search: run a DDG search (stops the previous one and clears its cache) ────
-# --continue: keeps the cache and resumes from the saved DDG cursor (load more).
+# ── search: run a source search (stops the previous one and clears its cache) ─
+# --continue: keeps the cache and resumes from the source cursor (load more).
+# --source: ddg (default) | wallhaven.
 # --clear: stops the search and drops the cache (called when the picker closes).
 cmd_search() {
     if [ "${1:-}" = "--clear" ]; then
         cmd_stop
         rm -rf "${DAVINCIX_SEARCH_DIR:?}"/* 2>/dev/null || true
-        rm -f "$DAVINCIX_MAP_FILE" "$DAVINCIX_NEXT_FILE" 2>/dev/null || true
+        rm -f "$DAVINCIX_MAP_FILE" "$DAVINCIX_SOURCE_FILE" 2>/dev/null || true
+        rm -rf "$DAVINCIX_CURSOR_DIR" 2>/dev/null || true
         return 0
     fi
 
-    local continue=0 query=""
-    if [ "${1:-}" = "--continue" ]; then continue=1; shift; fi
-    query="${1:-}"
+    local continue=0 source="" query=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --continue) continue=1; shift ;;
+            --source) source="${2:-}"; shift 2 ;;
+            *) query="$1"; shift ;;
+        esac
+    done
     [ -n "$query" ] || usage
 
     cmd_stop
     sleep 0.2
 
-    if [ "$continue" = "0" ]; then
+    if [ "$continue" = "1" ]; then
+        [ -n "$source" ] || source="$(cat "$DAVINCIX_SOURCE_FILE" 2>/dev/null)"
+        [ -n "$source" ] || source="ddg"
+    else
+        [ -n "$source" ] || source="ddg"
         rm -rf "${DAVINCIX_SEARCH_DIR:?}"/* 2>/dev/null || true
-        rm -f "$DAVINCIX_MAP_FILE" "$DAVINCIX_NEXT_FILE" 2>/dev/null || true
+        rm -f "$DAVINCIX_MAP_FILE" 2>/dev/null || true
+        rm -rf "$DAVINCIX_CURSOR_DIR" 2>/dev/null || true
+        echo "$source" > "$DAVINCIX_SOURCE_FILE"
     fi
 
     echo 'run' > "$DAVINCIX_CONTROL_FILE"
-    if [ "$continue" = "1" ]; then
-        nohup bash "$DIR/search.sh" "$query" --continue >/dev/null 2>&1 &
-    else
-        nohup bash "$DIR/search.sh" "$query" >/dev/null 2>&1 &
-    fi
+    local args=( "$query" --source "$source" )
+    [ "$continue" = "1" ] && args+=( --continue )
+    nohup bash "$DIR/search.sh" "${args[@]}" >/dev/null 2>&1 &
 }
 
 # ── rm: move a wallpaper to the trash (and drop its thumbnail + manifest) ─────

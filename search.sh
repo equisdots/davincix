@@ -2,7 +2,7 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # davincix · kernel — online search (DuckDuckGo)
 #
-# Orchestrates the scraper (ddg_links.py): it receives "thumb|full" pairs on
+# Orchestrates the providers (providers/<source>.py): it receives "thumb|full" pairs on
 # stdout, validates the full URL content-type, downloads the thumbnail,
 # converts it when it is webp and records it in search_map.txt (name|url).
 # It honors the run/pause/stop control file (written by the UI).
@@ -14,26 +14,41 @@ davincix_ensure_dirs
 
 QUERY="${1:-}"
 if [ -z "$QUERY" ]; then
-    echo "usage: search.sh <query> [--continue]" >&2
+    echo "usage: search.sh <query> [--continue] [--source ddg|wallhaven]" >&2
     exit 2
 fi
+shift
 
 CONTINUE=0
-[ "${2:-}" = "--continue" ] && CONTINUE=1
+SOURCE="ddg"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --continue) CONTINUE=1; shift ;;
+        --source) SOURCE="${2:-ddg}"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+PROVIDER="$DIR/providers/$SOURCE.py"
+if [ ! -f "$PROVIDER" ]; then
+    echo "unknown search provider: $SOURCE" >&2
+    exit 2
+fi
 
 SEARCH_DIR="$DAVINCIX_SEARCH_DIR"
 MAP_FILE="$DAVINCIX_MAP_FILE"
 CONTROL_FILE="$DAVINCIX_CONTROL_FILE"
-LOG_FILE="$DAVINCIX_LOG_DIR/ddg_downloader.log"
+CURSOR_FILE="$DAVINCIX_CURSOR_DIR/$SOURCE"
+LOG_FILE="$DAVINCIX_LOG_DIR/search_downloader.log"
 
-echo "=== Starting search for: $QUERY (continue=$CONTINUE) ===" > "$LOG_FILE"
+echo "=== Starting $SOURCE search for: $QUERY (continue=$CONTINUE) ===" > "$LOG_FILE"
 
-mkdir -p "$SEARCH_DIR"
+mkdir -p "$SEARCH_DIR" "$DAVINCIX_CURSOR_DIR"
 
-# The Python → shell pipe provides the links; the shell applies backpressure.
-python3 -u "$DIR/ddg_links.py" "$QUERY" \
+# The provider → shell pipe delivers the links; the shell applies backpressure.
+python3 -u "$PROVIDER" "$QUERY" \
     $([ "$CONTINUE" = "1" ] && echo "--continue") \
-    --next-file "$DAVINCIX_NEXT_FILE" | while IFS='|' read -r thumb_url full_url; do
+    --cursor-file "$CURSOR_FILE" | while IFS='|' read -r thumb_url full_url; do
 
     state=$(cat "$CONTROL_FILE" 2>/dev/null | tr -d '[:space:]')
 
@@ -70,7 +85,7 @@ python3 -u "$DIR/ddg_links.py" "$QUERY" \
         ext="jpg"
     fi
 
-    filename="ddg_${uuid}.${ext}"
+    filename="web_${uuid}.${ext}"
     filepath="$SEARCH_DIR/$filename"
     tmppath="${filepath}.tmp"
 
