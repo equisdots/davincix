@@ -35,6 +35,8 @@ usage: davincix.sh <command> [options]
   rm <file>        move a wallpaper to the trash (and its thumbnail)
   import <paths…>  copy files into the wallpaper dir and build thumbnails
   slideshow start|stop|status [interval-seconds]
+  keys             show provider API key status (keys.conf)
+  keys set <NAME> <VALUE>  save PEXELS_KEY / PIXABAY_KEY
   paths            print the resolved paths
   --version        print the version
 EOF
@@ -281,6 +283,42 @@ cmd_slideshow() {
     bash "$DIR/slideshow.sh" "$@"
 }
 
+# ── keys: provider API keys (free) stored in keys.conf ────────────────────────
+cmd_keys() {
+    local action="${1:-}" name="${2:-}" value="${3:-}"
+    local conf="$DAVINCIX_STATE_DIR/keys.conf"
+
+    if [ "$action" = "set" ]; then
+        [ -n "$name" ] && [ -n "$value" ] || usage
+        case "$name" in
+            PEXELS_KEY|PIXABAY_KEY) ;;
+            *) echo "davincix: unknown key: $name (PEXELS_KEY | PIXABAY_KEY)" >&2; exit 2 ;;
+        esac
+        touch "$conf" && chmod 600 "$conf"
+        if grep -q "^${name}=" "$conf" 2>/dev/null; then
+            sed -i "s|^${name}=.*|${name}=${value}|" "$conf"
+        else
+            echo "${name}=${value}" >> "$conf"
+        fi
+        echo "saved ${name} in ${conf}"
+        return 0
+    fi
+
+    printf 'keys file: %s\n' "$conf"
+    local k v
+    for k in PEXELS_KEY PIXABAY_KEY; do
+        v=""
+        [ -f "$conf" ] && v="$(grep "^${k}=" "$conf" 2>/dev/null | head -n1 | cut -d= -f2-)"
+        [ -n "$v" ] || v="${!k:-}"
+        if [ -n "$v" ]; then
+            printf '%-12s = %s...%s (set)\n' "$k" "${v:0:4}" "${v: -4}"
+        else
+            printf '%-12s = (not set)\n' "$k"
+        fi
+    done
+    printf '\nfree keys: pexels.com/api · pixabay.com/api/docs\n'
+}
+
 # ── paths: print the resolved paths (debug) ───────────────────────────────────
 cmd_paths() {
     printf 'wallpaper_dir = %s\n' "$DAVINCIX_WALLPAPER_DIR"
@@ -304,6 +342,7 @@ case "$cmd" in
     rm) cmd_rm "$@" ;;
     import) cmd_import "$@" ;;
     slideshow) cmd_slideshow "$@" ;;
+    keys) cmd_keys "$@" ;;
     paths) cmd_paths "$@" ;;
     --version|-v|version) echo "davincix $DAVINCIX_VERSION" ;;
     *) usage ;;
