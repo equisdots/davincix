@@ -10,6 +10,13 @@ set -uo pipefail
 
 DAVINCIX_VERSION="0.1.0"
 
+# Proveedores que piden API key: NAME|label|where (fuente única para el CLI y
+# para el panel de la UI vía `keys list`).
+DAVINCIX_KEYED_KEYS=(
+    "PEXELS_KEY|Pexels|pexels.com/api"
+    "PIXABAY_KEY|Pixabay|pixabay.com/api/docs"
+)
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$DIR/paths.sh"
 source "$DIR/util.sh"
@@ -36,7 +43,8 @@ usage: davincix.sh <command> [options]
   import <paths…>  copy files into the wallpaper dir and build thumbnails
   slideshow start|stop|status [interval-seconds]
   keys             show provider API key status (keys.conf)
-  keys set <NAME> <VALUE>  save PEXELS_KEY / PIXABAY_KEY
+  keys list        machine-readable key status (UI panel)
+  keys set <NAME> <VALUE>  save a provider API key
   paths            print the resolved paths
   --version        print the version
 EOF
@@ -284,16 +292,30 @@ cmd_slideshow() {
 }
 
 # ── keys: provider API keys (free) stored in keys.conf ────────────────────────
+#   keys         → human status
+#   keys list    → machine status: NAME|label|where|0/1 (consumed by the UI)
+#   keys set NAME VALUE
 cmd_keys() {
     local action="${1:-}" name="${2:-}" value="${3:-}"
     local conf="$DAVINCIX_STATE_DIR/keys.conf"
 
+    key_value() {
+        local k="$1" v=""
+        [ -f "$conf" ] && v="$(grep "^${k}=" "$conf" 2>/dev/null | head -n1 | cut -d= -f2-)"
+        [ -n "$v" ] || v="${!k:-}"
+        printf '%s' "$v"
+    }
+
     if [ "$action" = "set" ]; then
         [ -n "$name" ] && [ -n "$value" ] || usage
-        case "$name" in
-            PEXELS_KEY|PIXABAY_KEY) ;;
-            *) echo "davincix: unknown key: $name (PEXELS_KEY | PIXABAY_KEY)" >&2; exit 2 ;;
-        esac
+        local entry known=0
+        for entry in "${DAVINCIX_KEYED_KEYS[@]}"; do
+            [ "${entry%%|*}" = "$name" ] && known=1
+        done
+        if [ "$known" != "1" ]; then
+            echo "davincix: unknown key: $name" >&2
+            exit 2
+        fi
         touch "$conf" && chmod 600 "$conf"
         if grep -q "^${name}=" "$conf" 2>/dev/null; then
             sed -i "s|^${name}=.*|${name}=${value}|" "$conf"
@@ -304,19 +326,30 @@ cmd_keys() {
         return 0
     fi
 
+    if [ "$action" = "list" ]; then
+        local entry label where
+        for entry in "${DAVINCIX_KEYED_KEYS[@]}"; do
+            IFS='|' read -r name label where <<< "$entry"
+            if [ -n "$(key_value "$name")" ]; then
+                printf '%s|%s|%s|1\n' "$name" "$label" "$where"
+            else
+                printf '%s|%s|%s|0\n' "$name" "$label" "$where"
+            fi
+        done
+        return 0
+    fi
+
     printf 'keys file: %s\n' "$conf"
-    local k v
-    for k in PEXELS_KEY PIXABAY_KEY; do
-        v=""
-        [ -f "$conf" ] && v="$(grep "^${k}=" "$conf" 2>/dev/null | head -n1 | cut -d= -f2-)"
-        [ -n "$v" ] || v="${!k:-}"
+    local label where v
+    for entry in "${DAVINCIX_KEYED_KEYS[@]}"; do
+        IFS='|' read -r name label where <<< "$entry"
+        v="$(key_value "$name")"
         if [ -n "$v" ]; then
-            printf '%-12s = %s...%s (set)\n' "$k" "${v:0:4}" "${v: -4}"
+            printf '%-12s = %s...%s (set)\n' "$name" "${v:0:4}" "${v: -4}"
         else
-            printf '%-12s = (not set)\n' "$k"
+            printf '%-12s = (not set) — free at %s\n' "$name" "$where"
         fi
     done
-    printf '\nfree keys: pexels.com/api · pixabay.com/api/docs\n'
 }
 
 # ── paths: print the resolved paths (debug) ───────────────────────────────────

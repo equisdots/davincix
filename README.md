@@ -55,6 +55,7 @@ davincix.sh stop
 davincix.sh rm <file>
 davincix.sh import <paths…>
 davincix.sh slideshow start|stop|status [interval]
+davincix.sh keys [list | set NAME VALUE]   # provider API keys (keys.conf)
 davincix.sh paths
 davincix.sh --version
 ```
