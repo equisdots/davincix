@@ -5,7 +5,7 @@
 # Resolves every path of the wallpaper subsystem and exports it. There is no
 # shell dependency: the defaults reproduce the current desktop layout
 # (~/.cache/quickshell/wallpaper_picker, ...) so existing contracts keep
-# working (Lock.qml, sddm-colors.sh, init.sh), and they can be overridden
+# working (Lock.qml, init.sh), and they can be overridden
 # through the environment, which is what will allow extracting davincix as a
 # standalone tool.
 #
