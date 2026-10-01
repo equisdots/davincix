@@ -29,7 +29,9 @@ usage() {
     cat <<'EOF'
 usage: davincix.sh <command> [options]
 
-  set <file|url>   apply a wallpaper (--video, --monitors all|A,B,
+  set <file|url|scene-dir>
+                   apply a wallpaper; a directory containing scene.js is an
+                   interactive scene (--video, --monitors all|A,B,
                    --transition name, --thumb <poster>, --notify, --dry-run)
   fetch            download a search result and apply it (--name, --map,
                    --dest, --thumb-in, --thumb-out, --monitors, --transition)
@@ -39,7 +41,7 @@ usage: davincix.sh <command> [options]
   search --continue <query>  next page (keeps the cache; --source optional)
   search --clear   stop the search and drop its cache
   stop             stop the running search
-  rm <file>        move a wallpaper to the trash (and its thumbnail)
+  rm <file|dir>    move a wallpaper or scene to the trash (and its thumbnail)
   import <paths…>  copy files into the wallpaper dir and build thumbnails
   slideshow start|stop|status [interval-seconds]
   keys             show provider API key status (keys.conf)
@@ -76,6 +78,21 @@ cmd_set() {
             exit 1
         fi
         src="$dest"
+    fi
+
+    # Interactive scene directory (contains scene.js): the UI passes the folder.
+    if davincix_is_scene "$src"; then
+        if [ "$dry" = "1" ]; then
+            printf 'dry-run: scene=%s monitors=%s transition=%s\n' \
+                "$src" "$monitors" "${transition:-random}"
+            exit 0
+        fi
+        davincix_set_scene "$src" "$monitors" "$transition"
+        if [ "$notify" = "1" ]; then
+            notify-send "Wallpaper" "Applied scene: $(basename "$src")" \
+                -i preferences-desktop-wallpaper -t 2000
+        fi
+        exit 0
     fi
 
     if [ ! -f "$src" ]; then
@@ -236,26 +253,43 @@ cmd_search() {
 }
 
 # ── rm: move a wallpaper to the trash (and drop its thumbnail + manifest) ─────
+# Accepts thumb-style names from the UI ("000_" video, "scn_" scene, "__" for
+# nested paths) as well as plain relative paths.
 cmd_rm() {
-    local name="${1:-}"
+    local name="${1:-}" flat target
     [ -n "$name" ] || usage
-    name="$(basename "$name")"
 
-    local target="$DAVINCIX_WALLPAPER_DIR/$name"
-    if [ ! -f "$target" ]; then
+    case "$name" in
+        scn_*) name="${name#scn_}"; name="${name%.jpg}" ;;
+        000_*) name="${name#000_}" ;;
+    esac
+    name="${name//__/\/}"
+
+    target="$DAVINCIX_WALLPAPER_DIR/$name"
+    # Legacy callers sent a bare basename.
+    if [ ! -e "$target" ]; then
+        name="$(basename "$name")"
+        target="$DAVINCIX_WALLPAPER_DIR/$name"
+    fi
+
+    if [ ! -e "$target" ]; then
         notify-send "Wallpaper Error" "Not found: $name" -u critical -t 5000
         exit 1
     fi
 
     # Papelera vía gio (gvfs); fallback: borrado directo.
-    if ! gio trash "$target" 2>/dev/null; then
-        rm -f "$target"
+    if [ -d "$target" ]; then
+        if ! gio trash "$target" 2>/dev/null; then rm -rf "$target"; fi
+    else
+        if ! gio trash "$target" 2>/dev/null; then rm -f "$target"; fi
     fi
 
-    rm -f "$DAVINCIX_THUMB_DIR/$name" "$DAVINCIX_THUMB_DIR/000_$name"
-    sed -i "/^${name}$/d;/^000_${name}$/d" "$DAVINCIX_MANIFEST" 2>/dev/null || true
+    flat="$(davincix_flat_name "$name")"
+    rm -f "$DAVINCIX_THUMB_DIR/$flat" "$DAVINCIX_THUMB_DIR/000_$flat" \
+          "$DAVINCIX_THUMB_DIR/scn_$flat.jpg"
+    sed -i "/^${flat}$/d;/^000_${flat}$/d;/^scn_${flat}\.jpg$/d" "$DAVINCIX_MANIFEST" 2>/dev/null || true
 
-    notify-send "Wallpaper" "Moved to trash: $name" -t 2000
+    notify-send "Wallpaper" "Moved to trash: $(basename "$name")" -t 2000
 }
 
 # ── import: copy files into the wallpaper dir and refresh thumbnails ──────────

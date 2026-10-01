@@ -36,12 +36,21 @@ davincix_slideshow_start() {
         while true; do
             sleep "$interval"
             [ -f "$DAVINCIX_SLIDESHOW_PID" ] || break
-            file=$(find "$DAVINCIX_WALLPAPER_DIR" -maxdepth 1 -type f \
-                \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) \
-                -printf "%p\n" | shuf -n 1)
+
+            # Recursive: nested wallpapers participate too. The base image of a
+            # scene is skipped, and the previous wallpaper never repeats.
+            file=""
+            for _ in 1 2 3 4 5 6 7 8; do
+                candidate=$(find "$DAVINCIX_WALLPAPER_DIR" -type f \
+                    \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) \
+                    -printf "%p\n" | shuf -n 1)
+                [ -n "$candidate" ] || break
+                [ -f "$(dirname "$candidate")/scene.js" ] && continue
+                if [ -n "$previous" ] && [ "$candidate" = "$previous" ]; then continue; fi
+                file="$candidate"
+                break
+            done
             [ -n "$file" ] || continue
-            # No repetir la misma imagen dos veces seguidas.
-            if [ -n "$previous" ] && [ "$file" = "$previous" ]; then continue; fi
             previous="$file"
             bash "$DIR/davincix.sh" set "$file" --transition random
         done
