@@ -13,11 +13,16 @@ DAVINCIX_TRANSITIONS=(simple fade left right top bottom wipe grow center outer w
 # Start xwww-daemon if it is not alive.
 davincix_ensure_xwww() {
     pgrep -x xwww-daemon >/dev/null 2>&1 && return 0
-    if ! "$DAVINCIX_XWWW_DAEMON" >/dev/null 2>&1; then
+
+    # xwww-daemon runs in the foreground, so detach it. Launching it directly
+    # would block this function (and the caller) for as long as it lives.
+    setsid nohup "$DAVINCIX_XWWW_DAEMON" >/dev/null 2>&1 < /dev/null &
+    sleep 0.5
+
+    if ! pgrep -x xwww-daemon >/dev/null 2>&1; then
         notify-send "Wallpaper Error" "Failed to start xwww-daemon" -u critical -t 5000
         return 1
     fi
-    sleep 0.5
 }
 
 # Resolve a transition: empty/"random" → pick one; anything else passes through.
