@@ -8,7 +8,7 @@
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Valid xwww transitions (davincix_resolve_transition picks one for "random").
-DAVINCIX_TRANSITIONS=(simple fade left right top bottom wipe grow center outer wave glitch decrypt dissolve clock zoom)
+DAVINCIX_TRANSITIONS=(simple fade left right top bottom wipe grow center outer wave glitch decrypt dissolve clock zoom pixelate ripple blinds spiral static parallax parallax-left parallax-right parallax-invert melt shatter)
 
 # Start xwww-daemon if it is not alive.
 davincix_ensure_xwww() {
