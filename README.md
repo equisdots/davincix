@@ -69,6 +69,8 @@ davincix.sh --version
 | `DAVINCIX_STATE_DIR` | `~/.local/state/quickshell/wallpaper_picker` | persistent flags |
 | `DAVINCIX_RUN_DIR` | `$XDG_RUNTIME_DIR/quickshell/wallpaper_picker` | control, locks, PIDs |
 | `DAVINCIX_LOG_DIR` | `$XDG_RUNTIME_DIR/quickshell/logs` | logs |
+| `DAVINCIX_XWWW` | `~/.local/bin/xwww`, then PATH | client used by the kernel |
+| `DAVINCIX_XWWW_DAEMON` | `~/.local/bin/xwww-daemon`, then PATH | daemon started when missing |
 | `DAVINCIX_CLI` | — | consumed by the UI (CLI location) |
 
 ## Interactive scenes (xwww)

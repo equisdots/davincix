@@ -13,7 +13,7 @@ DAVINCIX_TRANSITIONS=(simple fade left right top bottom wipe grow center outer w
 # Start xwww-daemon if it is not alive.
 davincix_ensure_xwww() {
     pgrep -x xwww-daemon >/dev/null 2>&1 && return 0
-    if ! xwww-daemon >/dev/null 2>&1; then
+    if ! "$DAVINCIX_XWWW_DAEMON" >/dev/null 2>&1; then
         notify-send "Wallpaper Error" "Failed to start xwww-daemon" -u critical -t 5000
         return 1
     fi
@@ -30,10 +30,11 @@ davincix_resolve_transition() {
     fi
 }
 
-# Stop the interactive scene runner, if any. The pattern is anchored so it can
-# never match the caller's own command line (davincix_* functions appear in it).
+# Stop the interactive scene runner, if any. The bracket keeps the pattern from
+# matching the caller's own command line while still matching both "xwww scene
+# run" and the absolute-path invocation ("/home/.../xwww scene run").
 davincix_scene_stop() {
-    pkill -f '^xwww scene' 2>/dev/null || true
+    pkill -f '[x]www scene run' 2>/dev/null || true
     rm -f "$DAVINCIX_STATE_DIR/current_scene"
 }
 
@@ -58,7 +59,7 @@ davincix_set_scene() {
     # 'simple' is step-driven (its default step in scene run is instant).
     [ "$t" = "simple" ] && args+=(--transition-step 2)
     [ "$monitors" != "all" ] && args+=(--outputs "$monitors")
-    setsid nohup xwww "${args[@]}" >> "$DAVINCIX_LOG_FILE" 2>&1 &
+    setsid nohup "$DAVINCIX_XWWW" "${args[@]}" >> "$DAVINCIX_LOG_FILE" 2>&1 &
 
     mkdir -p "$DAVINCIX_STATE_DIR"
     printf '%s\n' "$dir" > "$DAVINCIX_STATE_DIR/current_scene"
@@ -68,8 +69,8 @@ davincix_set_scene() {
     (
         sleep 2
         local mon
-        mon="$(xwww query 2>/dev/null | sed -n 's/^: \([^:]*\):.*/\1/p' | head -n1)"
-        [ -n "$mon" ] && xwww screenshot "$DAVINCIX_CURRENT_IMG" -m "$mon" >/dev/null 2>&1
+        mon="$("$DAVINCIX_XWWW" query 2>/dev/null | sed -n 's/^: \([^:]*\):.*/\1/p' | head -n1)"
+        [ -n "$mon" ] && "$DAVINCIX_XWWW" screenshot "$DAVINCIX_CURRENT_IMG" -m "$mon" >/dev/null 2>&1
     ) </dev/null >/dev/null 2>&1 &
 }
 
@@ -85,10 +86,10 @@ davincix_set_image() {
     davincix_log "APPLY IMAGE: $file → $monitors (${t})"
 
     if [ "$monitors" = "all" ]; then
-        xwww img "$file" --transition-type "$t" --transition-pos 0.5,0.5 \
+        "$DAVINCIX_XWWW" img "$file" --transition-type "$t" --transition-pos 0.5,0.5 \
             --transition-fps 144 --transition-duration 1 >> "$DAVINCIX_LOG_FILE" 2>&1 &
     else
-        xwww img -o "$monitors" "$file" --transition-type "$t" --transition-pos 0.5,0.5 \
+        "$DAVINCIX_XWWW" img -o "$monitors" "$file" --transition-type "$t" --transition-pos 0.5,0.5 \
             --transition-fps 144 --transition-duration 1 >> "$DAVINCIX_LOG_FILE" 2>&1 &
     fi
 }

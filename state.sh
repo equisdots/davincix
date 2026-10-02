@@ -9,7 +9,7 @@
 # Directory of the running interactive scene, or empty.
 davincix_current_scene_dir() {
     [ -f "$DAVINCIX_STATE_DIR/current_scene" ] || return 0
-    pgrep -f '^xwww scene' >/dev/null 2>&1 || return 0
+    pgrep -f '[x]www scene run' >/dev/null 2>&1 || return 0
     cat "$DAVINCIX_STATE_DIR/current_scene" 2>/dev/null
 }
 
@@ -24,8 +24,8 @@ davincix_current() {
 
     if pgrep -a mpvpaper >/dev/null 2>&1; then
         src="$(pgrep -a mpvpaper | grep -o "$DAVINCIX_WALLPAPER_DIR/[^' ]*" | head -n1)"
-    elif command -v xwww >/dev/null 2>&1; then
-        src="$(xwww query 2>/dev/null | grep -o "$DAVINCIX_WALLPAPER_DIR/[^ ]*" | head -n1)"
+    elif [ -x "$DAVINCIX_XWWW" ]; then
+        src="$("$DAVINCIX_XWWW" query 2>/dev/null | grep -o "$DAVINCIX_WALLPAPER_DIR/[^ ]*" | head -n1)"
     fi
     printf '%s' "$src"
 }

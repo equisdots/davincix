@@ -66,6 +66,16 @@ davincix set ~/.config/hypr/wallpapers/ascii-astro --transition decrypt
   trash) and flattened nested paths (`sub__dir__pic.jpg`), and removes their
   thumbnails and manifest entries.
 
+## Binary resolution
+
+The kernel resolves the `xwww` client itself instead of trusting the caller
+PATH: `DAVINCIX_XWWW`, then `~/.local/bin/xwww`, then `xwww` from PATH. The
+desktop session PATH may not include `~/.local/bin` (Quickshell, for example),
+and that directory holds the scene-capable build installed by the dotfiles.
+The daemon follows the same rule through `DAVINCIX_XWWW_DAEMON`. Scene stop
+uses a bracket pattern (`[x]www scene run`) so it also matches processes started
+through the absolute path.
+
 ## Palette
 
 Scenes started by the kernel use `--palette equisdots`, so they follow the
