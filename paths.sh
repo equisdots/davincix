@@ -38,6 +38,24 @@ DAVINCIX_PREP_LOCK="$DAVINCIX_RUN_DIR/wallpaper_prep.lock"
 DAVINCIX_MANIFEST="$DAVINCIX_THUMB_DIR/.manifest"
 DAVINCIX_LOG_FILE="$DAVINCIX_LOG_DIR/xwww_debug.log"
 
+# Binaries. The desktop session PATH may not include ~/.local/bin (where the
+# installer places the scene-capable xwww build), so resolve the client and the
+# daemon explicitly: env override, ~/.local/bin, then PATH.
+if [ -z "${DAVINCIX_XWWW:-}" ]; then
+    if [ -x "$HOME/.local/bin/xwww" ]; then
+        DAVINCIX_XWWW="$HOME/.local/bin/xwww"
+    else
+        DAVINCIX_XWWW="$(command -v xwww || printf 'xwww')"
+    fi
+fi
+if [ -z "${DAVINCIX_XWWW_DAEMON:-}" ]; then
+    if [ -x "$HOME/.local/bin/xwww-daemon" ]; then
+        DAVINCIX_XWWW_DAEMON="$HOME/.local/bin/xwww-daemon"
+    else
+        DAVINCIX_XWWW_DAEMON="$(command -v xwww-daemon || printf 'xwww-daemon')"
+    fi
+fi
+
 davincix_ensure_dirs() {
     mkdir -p "$DAVINCIX_CACHE_DIR" "$DAVINCIX_STATE_DIR" "$DAVINCIX_RUN_DIR" \
              "$DAVINCIX_LOG_DIR" "$DAVINCIX_THUMB_DIR" "$DAVINCIX_SEARCH_DIR" \
@@ -49,4 +67,5 @@ export DAVINCIX_WALLPAPER_DIR DAVINCIX_CACHE_DIR DAVINCIX_STATE_DIR DAVINCIX_RUN
        DAVINCIX_MAP_FILE DAVINCIX_CONTROL_FILE DAVINCIX_CURSOR_DIR DAVINCIX_SOURCE_FILE \
        DAVINCIX_SLIDESHOW_PID DAVINCIX_SLIDESHOW_FLAG \
        DAVINCIX_CURRENT_IMG DAVINCIX_PREP_LOCK \
-       DAVINCIX_MANIFEST DAVINCIX_LOG_FILE
+       DAVINCIX_MANIFEST DAVINCIX_LOG_FILE \
+       DAVINCIX_XWWW DAVINCIX_XWWW_DAEMON
