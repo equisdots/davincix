@@ -18,3 +18,18 @@ davincix_is_video() {
         *) return 1 ;;
     esac
 }
+
+# True when $1 is an interactive scene directory (contains scene.js).
+davincix_is_scene() {
+    [ -d "$1" ] && [ -f "$1/scene.js" ]
+}
+
+# Flatten a src-dir-relative path into a thumb name: "a/b.jpg" → "a__b.jpg".
+davincix_flat_name() {
+    printf '%s' "${1//\//__}"
+}
+
+# Reverse of davincix_flat_name: "a__b.jpg" → "a/b.jpg".
+davincix_unflat_name() {
+    printf '%s' "${1//__/\/}"
+}

@@ -42,7 +42,7 @@ Any other frontend only needs the CLI path.
 ## CLI
 
 ```bash
-davincix.sh set <file|url> [--video] [--monitors all|A,B] \
+davincix.sh set <file|url|scene-dir> [--video] [--monitors all|A,B] \
              [--transition name] [--thumb <poster>] [--notify] [--dry-run]
 davincix.sh fetch --name <n> --map <f> --dest <f> \
              [--thumb-in <f>] [--thumb-out <f>] [--monitors ...] [--transition ...]
@@ -52,7 +52,7 @@ davincix.sh search <query> [--source ddg|wallhaven|pexels|pixabay]
 davincix.sh search --continue <query>   # next page (keeps the cache)
 davincix.sh search --clear              # stop + drop the cache
 davincix.sh stop
-davincix.sh rm <file>
+davincix.sh rm <file|scene-dir>
 davincix.sh import <paths…>
 davincix.sh slideshow start|stop|status [interval]
 davincix.sh keys [list | set NAME VALUE]   # provider API keys (keys.conf)
@@ -71,9 +71,37 @@ davincix.sh --version
 | `DAVINCIX_LOG_DIR` | `$XDG_RUNTIME_DIR/quickshell/logs` | logs |
 | `DAVINCIX_CLI` | — | consumed by the UI (CLI location) |
 
+## Interactive scenes (xwww)
+
+A directory inside the wallpaper dir containing `scene.js` is an interactive
+scene (procedural wallpaper drawn by `xwww scene run`). `set <dir>` detects it
+and starts the scene; the picker shows it as a normal entry with the `scn_`
+thumbnail prefix and applies it through the same CLI.
+
+```
+wallpapers/astro-palette/
+├── scene.js     the xwww scene (required)
+└── base.jpg     cover image for the picker thumbnail
+```
+
+- **Thumbnail**: `thumbs/scn_<name>.jpg`, taken from `base.jpg` (or
+  `base.{jpeg,png,webp}`; falls back to the first image in the directory, and
+  to a placeholder for pure-JS scenes without a cover).
+- **Nested files**: the scanner is recursive; a file `sub/dir/pic.jpg` becomes
+  the thumb `sub__dir__pic.jpg` (`__` is the flattened separator).
+- **Palette**: scenes run with `--palette equisdots`, so they follow the active
+  bar palette within ~1s. The kernel keeps the cache for lock/SDDM
+  (`current_wallpaper.png`) refreshed after applying.
+- **State**: the active scene dir is stored in
+  `$DAVINCIX_STATE_DIR/current_scene`; `init.sh` re-applies it on the next
+  session. Applying an image or video removes it and stops the scene.
+
+Full reference: [docs/interactive-scenes.md](docs/interactive-scenes.md).
+
 ## Files that are contracts
 
 - `current_wallpaper.png` — current wallpaper cache (lock screens, theme tools).
+- `current_scene` (state dir) — directory of the running interactive scene.
 - `ddg_search_control` — `run|pause|stop`; written by the UI.
 - `search_cursors/<source>` — per-provider pagination cursor (`search --continue`).
 - `search_source` — active search provider (persisted per fresh search).

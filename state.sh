@@ -6,9 +6,22 @@
 # that the lock screen and SDDM read (current_wallpaper.png).
 # ═══════════════════════════════════════════════════════════════════════════
 
+# Directory of the running interactive scene, or empty.
+davincix_current_scene_dir() {
+    [ -f "$DAVINCIX_STATE_DIR/current_scene" ] || return 0
+    pgrep -f '^xwww scene' >/dev/null 2>&1 || return 0
+    cat "$DAVINCIX_STATE_DIR/current_scene" 2>/dev/null
+}
+
 # Path of the current wallpaper, or empty.
 davincix_current() {
-    local src=""
+    local src dir
+    dir="$(davincix_current_scene_dir)"
+    if [ -n "$dir" ]; then
+        printf '%s/scene.js' "$dir"
+        return 0
+    fi
+
     if pgrep -a mpvpaper >/dev/null 2>&1; then
         src="$(pgrep -a mpvpaper | grep -o "$DAVINCIX_WALLPAPER_DIR/[^' ]*" | head -n1)"
     elif command -v xwww >/dev/null 2>&1; then
@@ -17,9 +30,17 @@ davincix_current() {
     printf '%s' "$src"
 }
 
-# Thumbnail name of the current wallpaper ("000_" prefix for video), or empty.
+# Thumbnail name of the current wallpaper, or empty.
+# Prefixed: "000_" for video, "scn_" for interactive scenes.
 davincix_current_thumb_name() {
-    local src base
+    local src base dir rel
+    dir="$(davincix_current_scene_dir)"
+    if [ -n "$dir" ]; then
+        rel="${dir#"$DAVINCIX_WALLPAPER_DIR"/}"
+        printf 'scn_%s.jpg' "$(davincix_flat_name "$rel")"
+        return 0
+    fi
+
     src="$(davincix_current)"
     [ -n "$src" ] || return 0
     base="$(basename "$src")"

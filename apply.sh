@@ -30,6 +30,49 @@ davincix_resolve_transition() {
     fi
 }
 
+# Stop the interactive scene runner, if any. The pattern is anchored so it can
+# never match the caller's own command line (davincix_* functions appear in it).
+davincix_scene_stop() {
+    pkill -f '^xwww scene' 2>/dev/null || true
+    rm -f "$DAVINCIX_STATE_DIR/current_scene"
+}
+
+# Apply an interactive scene directory (must contain scene.js).
+# $1=dir $2=monitors $3=transition (empty/"random" picks one, like images)
+davincix_set_scene() {
+    local dir="$1" monitors="${2:-all}" transition="${3:-}"
+    davincix_is_scene "$dir" || return 1
+
+    davincix_ensure_xwww || return 1
+    davincix_scene_stop
+    pkill mpvpaper 2>/dev/null || true
+
+    local t
+    t="$(davincix_resolve_transition "$transition")"
+
+    davincix_log "APPLY SCENE: $dir → $monitors (${t})"
+
+    local args=(scene run "$dir/scene.js" --palette equisdots --fps 2 --timeout-ms 2000
+                --transition-type "$t" --transition-duration 1 --transition-fps 144
+                --transition-pos 0.5,0.5)
+    # 'simple' is step-driven (its default step in scene run is instant).
+    [ "$t" = "simple" ] && args+=(--transition-step 2)
+    [ "$monitors" != "all" ] && args+=(--outputs "$monitors")
+    setsid nohup xwww "${args[@]}" >> "$DAVINCIX_LOG_FILE" 2>&1 &
+
+    mkdir -p "$DAVINCIX_STATE_DIR"
+    printf '%s\n' "$dir" > "$DAVINCIX_STATE_DIR/current_scene"
+
+    # Refresh the lock/SDDM cache with the first rendered frame (best effort;
+    # never blocks the caller).
+    (
+        sleep 2
+        local mon
+        mon="$(xwww query 2>/dev/null | sed -n 's/^: \([^:]*\):.*/\1/p' | head -n1)"
+        [ -n "$mon" ] && xwww screenshot "$DAVINCIX_CURRENT_IMG" -m "$mon" >/dev/null 2>&1
+    ) </dev/null >/dev/null 2>&1 &
+}
+
 # Apply a still image. $1=file $2=monitors ("all" or "A,B") $3=transition
 davincix_set_image() {
     local file="$1" monitors="${2:-all}" transition="$3"
@@ -37,6 +80,7 @@ davincix_set_image() {
     t="$(davincix_resolve_transition "$transition")"
 
     davincix_ensure_xwww || return 1
+    davincix_scene_stop
     pkill mpvpaper 2>/dev/null || true
     davincix_log "APPLY IMAGE: $file → $monitors (${t})"
 
@@ -54,6 +98,8 @@ davincix_set_video() {
     local file="$1" monitors="${2:-all}"
     local opts='loop --no-audio --hwdec=auto --profile=high-quality --video-sync=display-resample --interpolation --tscale=oversample'
     davincix_log "APPLY VIDEO: $file → $monitors"
+
+    davincix_scene_stop
 
     if [ "$monitors" = "all" ]; then
         mpvpaper -o "$opts" '*' "$file" >> "$DAVINCIX_LOG_FILE" 2>&1 &
