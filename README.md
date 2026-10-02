@@ -96,6 +96,8 @@ wallpapers/astro-palette/
   `$DAVINCIX_STATE_DIR/current_scene`; `init.sh` re-applies it on the next
   session. Applying an image or video removes it and stops the scene.
 
+Full reference: [docs/interactive-scenes.md](docs/interactive-scenes.md).
+
 ## Files that are contracts
 
 - `current_wallpaper.png` — current wallpaper cache (lock screens, theme tools).
