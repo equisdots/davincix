@@ -45,8 +45,10 @@ davincix set ~/.config/hypr/wallpapers/ascii-astro --transition decrypt
   `xwww` set plus `random`; empty means random). It is used as the entry
   transition of the first frame; later frames are instant and delivered only
   when the scene canvas changes.
-- Scenes run at 10 fps and follow the active bar palette; a palette change
-  crossfades in the client (`--palette-fade`, 800 ms by default).
+- Scenes run at 15 fps (`DAVINCIX_SCENE_FPS` overrides it, e.g.
+  `DAVINCIX_SCENE_FPS=30 davincix set <scene>`) and follow the active bar
+  palette; a palette change crossfades in the client (`--palette-fade`, 800 ms
+  by default).
 - Applying an image or a video stops the running scene first.
 - The first frame is cached to `current_wallpaper.png` (lock screen and SDDM).
 

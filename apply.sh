@@ -58,7 +58,7 @@ davincix_set_scene() {
 
     davincix_log "APPLY SCENE: $dir → $monitors (${t})"
 
-    local args=(scene run "$dir/scene.js" --palette equisdots --fps 10 --timeout-ms 2000
+    local args=(scene run "$dir/scene.js" --palette equisdots --fps "${DAVINCIX_SCENE_FPS:-15}" --timeout-ms 2000
                 --transition-type "$t" --transition-duration 1 --transition-fps 144
                 --transition-pos 0.5,0.5)
     # 'simple' is step-driven (its default step in scene run is instant).
