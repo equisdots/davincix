@@ -21,8 +21,8 @@ Dates use YYYY-MM-DD.
 ### Changed
 
 - The slideshow skips the base image of a scene directory.
-- Scenes run at 10 fps, follow the active bar palette and resolve `random` against the full
-  transition set, including the new reveal effects.
+- Scenes run at 15 fps (override with `DAVINCIX_SCENE_FPS`), follow the active bar palette and
+  resolve `random` against the full transition set, including the new reveal effects.
 - The xwww client and daemon are resolved explicitly: `DAVINCIX_XWWW` / `DAVINCIX_XWWW_DAEMON`,
   then `~/.local/bin`, then the PATH.
 
